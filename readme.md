@@ -5,7 +5,7 @@ This is a VHDL implementation of the Apple IIe's timing HAL.
 ## In development
 Note: This project is currently under development.<br/>
 <br/>
-![HAL](https://img.shields.io/badge/TIMING HAL-Unfinished-red)<br/>
+![HAL](https://img.shields.io/badge/TIMING_HAL-Unfinished-red)<br/>
 
 # Compiling and testing
 ## Prerequisites
