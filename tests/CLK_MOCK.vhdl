@@ -23,19 +23,20 @@ begin
         else
             CLK_14M <= not CLK_14M;
         end if;
-        CLK_COUNTER <= (CLK_COUNTER + 1) mod 16;
 
-        if ((CLK_COUNTER mod 2) = 1) then
+        if ((CLK_COUNTER mod 2) = 0) then
             CLK_7M <= '0';
         else
             CLK_7M <= '1';
         end if;
 
-        if (((CLK_COUNTER / 2) mod 2) = 1) then
+        if ((CLK_COUNTER mod 4) <= 1) then
             CREF <= '0';
         else
             CREF <= '1';
         end if;
+
+        CLK_COUNTER <= (CLK_COUNTER + 1) mod 16;
 
         wait for HALF_14M_CYCLE;
         CLK_14M <= not CLK_14M;
