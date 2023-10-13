@@ -3,7 +3,7 @@ use IEEE.std_logic_1164.all;
 
 entity IOU_MOCK is
     port (
-        PHI_0    : in std_logic;
+        PHI_0 : in std_logic;
 
         H0 : out std_logic
     );
@@ -12,7 +12,7 @@ end IOU_MOCK;
 architecture MOCK of IOU_MOCK is
 
     signal PHI_0_COUNTER : integer := 0;
-    signal H0_INT : std_logic := '0';
+    signal H0_INT        : std_logic := '0';
 begin
     process (PHI_0)
     begin

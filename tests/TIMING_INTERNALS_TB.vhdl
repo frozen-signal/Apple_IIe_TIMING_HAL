@@ -15,13 +15,13 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
             CLK_14M : inout std_logic;
 
             CLK_7M : out std_logic;
-            CREF : out std_logic
+            CREF   : out std_logic
         );
     end component;
 
     component IOU_MOCK is
         port (
-            PHI_0    : in std_logic;
+            PHI_0 : in std_logic;
 
             H0 : out std_logic
         );
@@ -50,184 +50,123 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
         );
     end component;
 
-    signal CLK_14M : std_logic := '0';
-    signal CLK_7M : std_logic;
-    signal CREF : std_logic;
+    procedure assertNextTimingHalOutputs(signal CLK : in std_logic;
 
-    signal H0 : std_logic := '0';
-    signal VID7 : std_logic := '0';
-    signal SEGB : std_logic := '0';
-    signal GR : std_logic := '0';
-    signal CASEN_N : std_logic := '0';
+                                         signal PHI_0, PHI_1  : in std_logic;
+                                         constant PHI_0_PHASE : in std_logic;
+
+                                         signal RAS_N           : in std_logic;
+                                         constant expectedRAS_N : in std_logic;
+
+                                         signal Q3           : in std_logic;
+                                         constant expectedQ3 : in std_logic;
+
+                                         signal CAS_N           : in std_logic;
+                                         constant expectedCAS_N : in std_logic) is
+    begin
+        wait until rising_edge(CLK);
+        wait for 1 ns;
+        assert(PHI_0 = PHI_0_PHASE) report "PHI_0 is " & std_logic'image(PHI_0) & " but should be " & std_logic'image(PHI_0_PHASE) severity error;
+        assert(PHI_1 = (not PHI_0_PHASE)) report "PHI_1 is " & std_logic'image(PHI_1) & " but should be " & std_logic'image(not PHI_0_PHASE) severity error;
+        assert(RAS_N = expectedRAS_N) report "RAS_N is " & std_logic'image(RAS_N) & " but should be " & std_logic'image(expectedRAS_N) severity error;
+        assert(Q3 = expectedQ3) report "RAS_N is " & std_logic'image(Q3) & " but should be " & std_logic'image(expectedQ3) severity error;
+        assert(CAS_N = expectedCAS_N) report "CAS_N is " & std_logic'image(CAS_N) & " but should be " & std_logic'image(expectedCAS_N) severity error;
+    end procedure;
+
+    signal CLK_14M : std_logic := '0';
+    signal CLK_7M  : std_logic;
+    signal CREF    : std_logic;
+
+    signal H0        : std_logic := '0';
+    signal VID7      : std_logic := '0';
+    signal SEGB      : std_logic := '0';
+    signal GR        : std_logic := '0';
+    signal CASEN_N   : std_logic := '0';
     signal S_80COL_N : std_logic := '1';
 
-    signal AX : std_logic;
-    signal RAS_N : std_logic := '0';
-    signal CAS_N : std_logic;
-    signal Q3 : std_logic := '0';
-    signal PHI_0 : std_logic := '0';
-    signal PHI_1 : std_logic;
-    signal VID7M : std_logic;
+    signal AX     : std_logic;
+    signal RAS_N  : std_logic := '0';
+    signal CAS_N  : std_logic;
+    signal Q3     : std_logic := '0';
+    signal PHI_0  : std_logic := '0';
+    signal PHI_1  : std_logic;
+    signal VID7M  : std_logic;
     signal LDPS_N : std_logic;
 
     signal FINISHED : std_logic := '0';
-
-    signal DEBUG : integer := 0;
 begin
     u_clk_mock : CLK_MOCK port map(
         FINISHED => FINISHED,
         CLK_14M  => CLK_14M,
         CLK_7M   => CLK_7M,
-        CREF => CREF
+        CREF     => CREF
     );
 
     u_iou_mock : IOU_MOCK port map (
         PHI_0 => PHI_0,
-        H0 => H0
+        H0    => H0
     );
 
     dut : TIMING_INTERNALS port map (
-        CLK_14M => CLK_14M,
-        CLK_7M => CLK_7M,
-        CREF => CREF,
-        H0 => H0,
-        VID7 => VID7,
-        SEGB => SEGB,
-        GR => GR,
-        CASEN_N => GR,
+        CLK_14M   => CLK_14M,
+        CLK_7M    => CLK_7M,
+        CREF      => CREF,
+        H0        => H0,
+        VID7      => VID7,
+        SEGB      => SEGB,
+        GR        => GR,
+        CASEN_N   => CASEN_N,
         S_80COL_N => S_80COL_N,
 
-        AX => AX,
-        LDPS_N => LDPS_N,
-        VID7M => VID7M,
-        PHI_1 => PHI_1,
-        PHI_0 => PHI_0,
-        Q3 => Q3,
-        CAS_N => CAS_N,
-        RAS_N => RAS_N
+        AX     => AX,
+        LDPS_N => LDPS_N,  -- TODO: untested
+        VID7M  => VID7M,  -- TODO: untested
+        PHI_1  => PHI_1,
+        PHI_0  => PHI_0,
+        Q3     => Q3,
+        CAS_N  => CAS_N,
+        RAS_N  => RAS_N
     );
 
-    process begin
+    process
+        variable expectedRAS_N : std_logic;
+    begin
         -- "Burn" a full horizontal line.
         for i in 1 to 65 loop
             wait until rising_edge(PHI_0);
         end loop;
 
-        -- Test PHI, RAS_N, and Q3 during the long-cycle
-        wait until rising_edge(PHI_0);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '1') report "RAS_N should be HIGH" severity error;
-        assert(Q3 = '1') report "Q3 should be HIGH" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '1') report "Q3 should be HIGH" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '1') report "Q3 should be HIGH" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '1') report "Q3 should be HIGH" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '0') report "Q3 should be LOW" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '0') report "Q3 should be LOW" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '0') report "Q3 should be LOW" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-        assert(Q3 = '0') report "Q3 should be LOW" severity error;
-
-        wait until rising_edge(CLK_14M);
-        wait for 1 ns;
-        assert(PHI_0 = '1') report "PHI_0 should be HIGH" severity error;
-        assert(PHI_1 = '0') report "PHI_1 should be LOW" severity error;
-        assert(RAS_N = '1') report "RAS_N should be HIGH" severity error;
-        assert(Q3 = '0') report "Q3 should be LOW" severity error;
+        -- Test PHI, RAS_N, and Q3 during the long-cycle. The long cycle has 2 extra 14M cycles.
+        CASEN_N <= '0';
+        assertNextTimingHalOutputs(PHI_0,   PHI_0, PHI_1, '1', RAS_N, '1', Q3, '1', CAS_N, '1');
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '1', CAS_N, '1');
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '1', CAS_N, '1');
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '1', CAS_N, '0');
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');  -- The first extra 14M cycle
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');  -- The second extra 14M cycle
+        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '1', Q3, '0', CAS_N, '0');
 
         -- Test the remainder of the horizontal line (64x short cycles)
         for cycle in 1 to 64 loop
-            for phase in std_logic range '0' downto '1' loop
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 is " & std_logic'image(PHI_0) & " but should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '1') report "RAS_N should be HIGH" severity error;
-                assert(Q3 = '1') report "Q3 should be HIGH" severity error;
+            -- Test CASEN_N: half cycles HIGH, and the other half LOW
+            if (cycle < 32) then
+                CASEN_N <= '0';
+            else
+                CASEN_N <= '1';
+            end if;
 
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-                assert(Q3 = '1') report "Q3 should be HIGH" severity error;
+            for PHI_0_PHASE in std_logic range '0' to '1' loop
+                expectedRAS_N := PHI_0_PHASE and CASEN_N;
 
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-                assert(Q3 = '1') report "Q3 should be HIGH" severity error;
-
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-                assert(Q3 = '1') report "Q3 should be HIGH" severity error;
-
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-                assert(Q3 = '0') report "Q3 should be LOW" severity error;
-
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '0') report "RAS_N should be LOW" severity error;
-                assert(Q3 = '0') report "Q3 should be LOW" severity error;
-
-                wait until rising_edge(CLK_14M);
-                wait for 1 ns;
-                assert(PHI_0 = phase) report "PHI_0 should be " & std_logic'image(phase) severity error;
-                assert(PHI_1 = (not phase)) report "PHI_1 should be " & std_logic'image(not phase) severity error;
-                assert(RAS_N = '1') report "RAS_N should be HIGH" severity error;
-                assert(Q3 = '0') report "Q3 should be LOW" severity error;
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '1', Q3, '1', CAS_N, '1');
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '1', CAS_N, '1');
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '1', CAS_N, '1');
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '1', CAS_N, expectedRAS_N);
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '0', CAS_N, expectedRAS_N);
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '0', CAS_N, expectedRAS_N);
+                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '1', Q3, '0', CAS_N, expectedRAS_N);
             end loop;
         end loop;
 

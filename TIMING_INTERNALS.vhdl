@@ -29,7 +29,7 @@ architecture RTL of TIMING_INTERNALS is
     signal AX_INT    : std_logic;
     signal PHI_0_INT : std_logic := '0';
     signal Q3_INT    : std_logic := '0';
-    signal CAS_N_INT : std_logic;
+    signal CAS_N_INT : std_logic := '0';
     signal VID7M_INT : std_logic;
 begin
     process (CLK_14M)
@@ -51,6 +51,9 @@ begin
                 or ((not RAS_N_INT) and (not Q3_INT))
                 or (CLK_7M and (not AX_INT) and PHI_0_INT));
 
+            -- From "Understanding the Apple IIe" by Jim Sather:
+            --    "CAS_N is gated by CASEN_N from the MMU during PHASE 0 to enable or disable motherboard RAM.
+            --     CAS_N always falls during PHASE 1 and falls during PHASE 0 if CASEN_N is low."
             CAS_N_INT <= not (((not RAS_N_INT) and (not AX_INT) and CAS_N_INT and (not PHI_0_INT))
                 or ((not RAS_N_INT) and (not AX_INT) and CAS_N_INT and PHI_0_INT and (not CASEN_N))
                 or ((not RAS_N_INT) and (not CAS_N_INT)));
@@ -74,11 +77,11 @@ begin
         end if;
     end process;
 
-    AX        <= AX_INT;
-    RAS_N     <= RAS_N_INT;
-    PHI_0     <= PHI_0_INT;
-    PHI_1     <= not PHI_0_INT;
-    Q3        <= Q3_INT;
-    CAS_N_INT <= CAS_N_INT;
-    VID7M     <= VID7M_INT;
+    AX    <= AX_INT;
+    RAS_N <= RAS_N_INT;
+    PHI_0 <= PHI_0_INT;
+    PHI_1 <= not PHI_0_INT;
+    Q3    <= Q3_INT;
+    CAS_N <= CAS_N_INT;
+    VID7M <= VID7M_INT;
 end RTL;

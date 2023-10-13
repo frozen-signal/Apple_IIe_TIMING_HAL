@@ -8,7 +8,7 @@ entity CLK_MOCK is
         CLK_14M : inout std_logic;
 
         CLK_7M : out std_logic;
-        CREF : out std_logic
+        CREF   : out std_logic
     );
 end CLK_MOCK;
 
