@@ -73,6 +73,24 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
         assert(CAS_N = expectedCAS_N) report "CAS_N is " & std_logic'image(CAS_N) & " but should be " & std_logic'image(expectedCAS_N) severity error;
     end procedure;
 
+    procedure assertNextVIDEOSignals(signal CLK              : in std_logic;
+                                     signal PHI_1            : in std_logic;
+                                     constant expectedPHI_1  : in std_logic;
+                                     signal RAS_N            : in std_logic;
+                                     constant expectedRAS_N  : in std_logic;
+                                     signal LDPS_N           : in std_logic;
+                                     constant expectedLDPS_N : in std_logic;
+                                     signal VID7M            : in std_logic;
+                                     constant expectedVID7M  : in std_logic) is
+    begin
+        wait until rising_edge(CLK);
+        wait for 1 ns;
+        assert(PHI_1 = expectedPHI_1) report "PHI_1 is " & std_logic'image(PHI_1) & " but should be " & std_logic'image(expectedPHI_1) severity error;
+        assert(RAS_N = expectedRAS_N) report "RAS_N is " & std_logic'image(RAS_N) & " but should be " & std_logic'image(expectedRAS_N) severity error;
+        assert(LDPS_N = expectedLDPS_N) report "LDPS_N is " & std_logic'image(LDPS_N) & " but should be " & std_logic'image(expectedLDPS_N) severity error;
+        assert(VID7M = expectedVID7M) report "VID7M is " & std_logic'image(VID7M) & " but should be " & std_logic'image(expectedVID7M) severity error;
+    end procedure;
+
     procedure assertNextLDPS_N(signal CLK              : in std_logic;
                                signal PHI_1            : in std_logic;
                                constant expectedPHI_1  : in std_logic;
@@ -109,7 +127,6 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
     signal LDPS_N : std_logic;
 
     signal FINISHED : std_logic := '0';
-    signal DEBUG : std_logic;
 begin
     u_clk_mock : CLK_MOCK port map(
         FINISHED => FINISHED,
@@ -188,84 +205,84 @@ begin
 
         -- Test LDPS_N, TEXT40, long cycle ------------------------------------------------------------
         -- In TEXT40, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
         -- In TEXT40, LDPS_N remains HIGH during PHASE 0
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');  -- LONG CYCLE
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
 
         -- Retest LDPS_N, TEXT40, normal cycle
         for cycle in 1 to 64 loop
             -- In TEXT40, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
             -- In TEXT40, LDPS_N remains HIGH during PHASE 0
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
         end loop;
 
         -- Test LDPS_N, LORES, long cycle -------------------------------------------------------------
         GR_N <= '0';
         SEGB <= '1';
         -- In LORES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
         -- In LORES, LDPS_N remains HIGH during PHASE 0
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
 
         -- Retest LDPS_N, LORES, normal cycle
         for cycle in 1 to 64 loop
             -- In LORES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
             -- In LORES, LDPS_N remains HIGH during PHASE 0
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
         end loop;
 
         -- Test LDPS_N, "HIRES, Not Delayed Cycle", long cycle -----------------------------------------------
@@ -273,44 +290,45 @@ begin
         SEGB <= '0';
         VID7 <= '0';
         -- In "HIRES, Not Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
         -- In "HIRES, Not Delayed Cycle", LDPS_N remains HIGH during PHASE 0
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');  -- LONG CYCLE
+        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
 
         -- Retest LDPS_N, "HIRES, Not Delayed Cycle", normal cycle
         for cycle in 1 to 64 loop
             -- In "HIRES, Not Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
             -- In "HIRES, Not Delayed Cycle", LDPS_N remains HIGH during PHASE 0
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
+            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
         end loop;
 
+        -- Note VID7M is not tested here for HIRES
         -- Test LDPS_N, "HIRES, Delayed Cycle", long cycle -----------------------------------------------
         GR_N <= '0';
         SEGB <= '0';
