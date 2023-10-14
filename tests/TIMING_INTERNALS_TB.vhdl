@@ -35,7 +35,7 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
             H0        : in std_logic;
             VID7      : in std_logic;
             SEGB      : in std_logic;
-            GR        : in std_logic;
+            GR_N      : in std_logic;
             CASEN_N   : in std_logic;
             S_80COL_N : in std_logic;
 
@@ -73,6 +73,21 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
         assert(CAS_N = expectedCAS_N) report "CAS_N is " & std_logic'image(CAS_N) & " but should be " & std_logic'image(expectedCAS_N) severity error;
     end procedure;
 
+    procedure assertNextLDPS_N(signal CLK              : in std_logic;
+                               signal PHI_1            : in std_logic;
+                               constant expectedPHI_1  : in std_logic;
+                               signal RAS_N            : in std_logic;
+                               constant expectedRAS_N  : in std_logic;
+                               signal LDPS_N           : in std_logic;
+                               constant expectedLDPS_N : in std_logic) is
+    begin
+        wait until rising_edge(CLK);
+        wait for 1 ns;
+        assert(PHI_1 = expectedPHI_1) report "PHI_1 is " & std_logic'image(PHI_1) & " but should be " & std_logic'image(expectedPHI_1) severity error;
+        assert(RAS_N = expectedRAS_N) report "RAS_N is " & std_logic'image(RAS_N) & " but should be " & std_logic'image(expectedRAS_N) severity error;
+        assert(LDPS_N = expectedLDPS_N) report "LDPS_N is " & std_logic'image(LDPS_N) & " but should be " & std_logic'image(expectedLDPS_N) severity error;
+    end procedure;
+
     signal CLK_14M : std_logic := '0';
     signal CLK_7M  : std_logic;
     signal CREF    : std_logic;
@@ -80,7 +95,7 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
     signal H0        : std_logic := '0';
     signal VID7      : std_logic := '0';
     signal SEGB      : std_logic := '0';
-    signal GR        : std_logic := '0';
+    signal GR_N      : std_logic := '1';
     signal CASEN_N   : std_logic := '0';
     signal S_80COL_N : std_logic := '1';
 
@@ -94,6 +109,7 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
     signal LDPS_N : std_logic;
 
     signal FINISHED : std_logic := '0';
+    signal DEBUG : std_logic;
 begin
     u_clk_mock : CLK_MOCK port map(
         FINISHED => FINISHED,
@@ -114,7 +130,7 @@ begin
         H0        => H0,
         VID7      => VID7,
         SEGB      => SEGB,
-        GR        => GR,
+        GR_N      => GR_N,
         CASEN_N   => CASEN_N,
         S_80COL_N => S_80COL_N,
 
@@ -168,6 +184,220 @@ begin
                 assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '0', CAS_N, expectedRAS_N);
                 assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '1', Q3, '0', CAS_N, expectedRAS_N);
             end loop;
+        end loop;
+
+        -- Test LDPS_N, TEXT40, long cycle ------------------------------------------------------------
+        -- In TEXT40, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        -- In TEXT40, LDPS_N remains HIGH during PHASE 0
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+
+        -- Retest LDPS_N, TEXT40, normal cycle
+        for cycle in 1 to 64 loop
+            -- In TEXT40, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            -- In TEXT40, LDPS_N remains HIGH during PHASE 0
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        end loop;
+
+        -- Test LDPS_N, LORES, long cycle -------------------------------------------------------------
+        GR_N <= '0';
+        SEGB <= '1';
+        -- In LORES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        -- In LORES, LDPS_N remains HIGH during PHASE 0
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+
+        -- Retest LDPS_N, LORES, normal cycle
+        for cycle in 1 to 64 loop
+            -- In LORES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            -- In LORES, LDPS_N remains HIGH during PHASE 0
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        end loop;
+
+        -- Test LDPS_N, "HIRES, Not Delayed Cycle", long cycle -----------------------------------------------
+        GR_N <= '0';
+        SEGB <= '0';
+        VID7 <= '0';
+        -- In "HIRES, Not Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        -- In "HIRES, Not Delayed Cycle", LDPS_N remains HIGH during PHASE 0
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+
+        -- Retest LDPS_N, "HIRES, Not Delayed Cycle", normal cycle
+        for cycle in 1 to 64 loop
+            -- In "HIRES, Not Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            -- In "HIRES, Not Delayed Cycle", LDPS_N remains HIGH during PHASE 0
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        end loop;
+
+        -- Test LDPS_N, "HIRES, Delayed Cycle", long cycle -----------------------------------------------
+        GR_N <= '0';
+        SEGB <= '0';
+        VID7 <= '1';
+        -- In "HIRES, Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');  -- Delayed LDPS_N during the long cycle lasts 2x 14M cycle
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '0');
+        DEBUG <= 'U';
+        -- In "HIRES, Delayed Cycle", LDPS_N remains HIGH during PHASE 0
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+
+        -- Retest LDPS_N, "HIRES, Delayed Cycle", normal cycle
+        for cycle in 1 to 64 loop
+            -- In "HIRES, Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '0');  -- LDPS_N is delayed 1x 14M cycle
+            -- In "HIRES, Delayed Cycle", LDPS_N remains HIGH during PHASE 0
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        end loop;
+
+        -- Test LDPS_N, Double RES, long cycle -----------------------------------------------
+        GR_N <= '1';
+        SEGB <= '0';
+        VID7 <= '0';
+        S_80COL_N <= '0';
+
+        -- In Double RES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+        -- In Double RES, LDPS_N also pulses LOW for 1x14M cycle on PHASE 0
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '0');
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
+        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+
+        -- Retest LDPS_N, Double RES, normal cycle
+        for cycle in 1 to 64 loop
+            -- In Double RES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
+            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
+            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
+            -- In Double RES, LDPS_N also pulses LOW for 1x14M cycle on PHASE 0
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '0');
+            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
         end loop;
 
         FINISHED <= '1';

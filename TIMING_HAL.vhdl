@@ -9,7 +9,7 @@ entity TIMING_HAL is
         H0        : in std_logic;  -- PIN 4
         VID7      : in std_logic;  -- PIN 5
         SEGB      : in std_logic;  -- PIN 6
-        GR        : in std_logic;  -- PIN 7  This is GR+2 in "Understanding the Apple IIe" by Jim Sather, and called LGR_TXT_N in the IOU emulator schematics.
+        GR_N      : in std_logic;  -- PIN 7  This is INVERTED GR+2 in "Understanding the Apple IIe" by Jim Sather (INVERTED LGR_TXT_N in the IOU emulator schematics).
         CASEN_N   : in std_logic;  -- PIN 8
         S_80COL_N : in std_logic;  -- PIN 9
         ENTMG_N   : in std_logic;  -- PIN 11
@@ -33,7 +33,7 @@ architecture RTL of TIMING_HAL is
             H0        : in std_logic;
             VID7      : in std_logic;
             SEGB      : in std_logic;
-            GR        : in std_logic;
+            GR_N      : in std_logic;
             CASEN_N   : in std_logic;
             S_80COL_N : in std_logic;
 
@@ -63,8 +63,8 @@ begin
         H0        => H0,
         VID7      => VID7,
         SEGB      => SEGB,
-        GR        => GR,
-        CASEN_N   => GR,
+        GR_N      => GR_N,
+        CASEN_N   => CASEN_N,
         S_80COL_N => S_80COL_N,
 
         AX => open,
