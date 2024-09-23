@@ -341,7 +341,7 @@ begin
         assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
         assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');  -- Delayed LDPS_N during the long cycle lasts 2x 14M cycle
         assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '0');
-        DEBUG <= 'U';
+
         -- In "HIRES, Delayed Cycle", LDPS_N remains HIGH during PHASE 0
         assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
         assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');

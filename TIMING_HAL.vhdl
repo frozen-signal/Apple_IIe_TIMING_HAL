@@ -5,13 +5,13 @@ entity TIMING_HAL is
     port (
         CLK_14M   : in std_logic;  -- PIN 1
         CLK_7M    : in std_logic;  -- PIN 2
-        CREF      : in std_logic;  -- PIN 3  3.5M CLK
+        CREF      : in std_logic;  -- PIN 3  Color REFerence 3.5M CLK
         H0        : in std_logic;  -- PIN 4
         VID7      : in std_logic;  -- PIN 5
         SEGB      : in std_logic;  -- PIN 6
-        GR_N      : in std_logic;  -- PIN 7  This is INVERTED GR+2 in "Understanding the Apple IIe" by Jim Sather (INVERTED LGR_TXT_N in the IOU emulator schematics).
-        CASEN_N   : in std_logic;  -- PIN 8
-        S_80COL_N : in std_logic;  -- PIN 9
+        GR_N      : in std_logic;  -- PIN 7  This is INVERTED GR+2 in "Understanding the Apple IIe" by Jim Sather (INVERTED LGR_TXT_N in the IOU emulator schematics). ????
+        CASEN_N   : in std_logic;  -- PIN 8  Also called RAMEN_N
+        S_80COL_N : in std_logic;  -- PIN 9  Also called 80VID_N
         ENTMG_N   : in std_logic;  -- PIN 11
 
         LDPS_N : out std_logic;  -- PIN 12
@@ -20,6 +20,7 @@ entity TIMING_HAL is
         PHI_0  : out std_logic;  -- PIN 15
         Q3     : out std_logic;  -- PIN 16
         CAS_N  : out std_logic;  -- PIN 17
+        AX     : out std_logic;  -- PIN 17  Left floating on the Apple IIe motherboard
         RAS_N  : out std_logic   -- PIN 19
     );
 end TIMING_HAL;
@@ -67,7 +68,7 @@ begin
         CASEN_N   => CASEN_N,
         S_80COL_N => S_80COL_N,
 
-        AX => open,
+        AX => AX,
         LDPS_N => LDPS_N_INT,
         VID7M  => VID7M_INT,
         PHI_1  => PHI_1_INT,
@@ -78,11 +79,10 @@ begin
     );
 
     LDPS_N <= LDPS_N_INT when ENTMG_N = '0' else 'Z';
-    VID7M <= VID7M_INT when ENTMG_N = '0' else 'Z';
-    PHI_0 <= PHI_0_INT when ENTMG_N = '0' else 'Z';
-    PHI_1 <= PHI_1_INT when ENTMG_N = '0' else 'Z';
-    Q3 <= Q3_INT when ENTMG_N = '0' else 'Z';
-    CAS_N <= CAS_N_INT when ENTMG_N = '0' else 'Z';
-    RAS_N <= RAS_N_INT when ENTMG_N = '0' else 'Z';
-
+    VID7M <= VID7M_INT   when ENTMG_N = '0' else 'Z';
+    PHI_0 <= PHI_0_INT   when ENTMG_N = '0' else 'Z';
+    PHI_1 <= PHI_1_INT   when ENTMG_N = '0' else 'Z';
+    Q3    <= Q3_INT      when ENTMG_N = '0' else 'Z';
+    CAS_N <= CAS_N_INT   when ENTMG_N = '0' else 'Z';
+    RAS_N <= RAS_N_INT   when ENTMG_N = '0' else 'Z';
 end RTL;

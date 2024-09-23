@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
 
+-- These equations are a mix between those in '3410170A (ABEL).txt' (see references directory) and the ones in "Understanding the Apple IIe" by Jim Sather, p3-22.
 entity TIMING_INTERNALS is
     port (
         CLK_14M   : in std_logic;
@@ -13,7 +14,7 @@ entity TIMING_INTERNALS is
         CASEN_N   : in std_logic;
         S_80COL_N : in std_logic;
 
-        AX     : out std_logic;
+        AX     : out std_logic;  -- This pin is left floating on the Apple IIe motherboard.
         LDPS_N : out std_logic;
         VID7M  : out std_logic;
         PHI_1  : out std_logic;
@@ -24,64 +25,99 @@ entity TIMING_INTERNALS is
     );
 end TIMING_INTERNALS;
 
+-- The PAL/GAL chips have an inverter just before the output pad. This means the equations compute the inverse-signal. This is why the '3410170A (ABEL).txt' equations have the form:
+-- /MY_SIGNAL := THIS*THAT
+-- (i.e. /MY_SIGNAL is inverted by the IC and the output is MY_SIGNAL)
+--
+-- The nomenclature of '3410170A (ABEL).txt' can't be used exactly in VHDL. So the signal names are renamed thus:
+-- "/"" becomes "N_" (/MY_SIGNAL becomes N_MY_SIGNAL)
+-- "'" becomes "_N" (CAS' becomes CAS_N)
 architecture RTL of TIMING_INTERNALS is
-    signal RAS_N_INT : std_logic := '0';
+    signal N_PHI_0  : std_logic := '0';
+    signal N_CAS_N  : std_logic := '0';
+    signal N_RAS_N  : std_logic := '0';
+    signal N_Q3     : std_logic := '0';
+    signal N_LDPS_N : std_logic := '0';
+    signal N_VID7M  : std_logic := '0';
+    signal N_AX     : std_logic := '0';
+
     signal AX_INT    : std_logic;
-    signal PHI_0_INT : std_logic := '0';
-    signal Q3_INT    : std_logic := '0';
-    signal CAS_N_INT : std_logic := '0';
+    signal N_80COL_N : std_logic;
+    signal N_CASEN_N : std_logic;
+    signal N_CLK_7M  : std_logic;
+    signal N_CREF    : std_logic;
+    signal N_GR_N    : std_logic;
+    signal N_H0      : std_logic;
+    signal N_SEGB    : std_logic;
+    signal N_VID7    : std_logic;
+    signal PHI_0_INT : std_logic;
+    signal Q3_INT    : std_logic;
+    signal RAS_N_INT : std_logic;
     signal VID7M_INT : std_logic;
 begin
-    process (CLK_14M)
+    -- Bunch of inverted signals to make the equations more readable.
+    AX_INT    <= not N_AX;
+    N_80COL_N <= not S_80COL_N;
+    N_CASEN_N <= not CASEN_N;
+    N_CLK_7M  <= not CLK_7M;
+    N_CREF    <= not CREF;
+    N_GR_N    <= not GR_N;
+    N_H0      <= not H0;
+    N_SEGB    <= not SEGB;
+    N_VID7    <= not VID7;
+    PHI_0_INT <= not N_PHI_0;
+    Q3_INT    <= not N_Q3;
+    RAS_N_INT <= not N_RAS_N;
+    VID7M_INT <= not N_VID7M;
+
+    process (CLK_14M, AX_INT, CLK_7M, CREF, GR_N, H0, N_80COL_N, N_AX, N_CASEN_N, N_CAS_N, N_CLK_7M, N_CREF, N_GR_N, N_H0, N_PHI_0, N_Q3, N_RAS_N, N_SEGB, N_VID7, PHI_0_INT, Q3_INT, RAS_N_INT, SEGB, VID7, VID7M_INT)
     begin
         if (rising_edge(CLK_14M)) then
-            RAS_N_INT <= not (Q3_INT
-                or (CLK_7M and (not RAS_N_INT) and (not PHI_0_INT))
-                or ((not CLK_7M) and (not AX_INT) and PHI_0_INT)
-                or (CLK_7M and CREF and AX_INT and H0 and PHI_0_INT)
-                or ((not CLK_7M) and (not CREF) and AX_INT and H0 and PHI_0_INT));
+            N_LDPS_N <= (CREF and N_H0 and N_PHI_0 and N_Q3 and N_AX)
+                or (GR_N and N_80COL_N and N_Q3 and N_AX)
+                or (GR_N and N_PHI_0 and N_Q3 and N_AX)
+                or (SEGB and N_PHI_0 and N_Q3 and N_AX)
+                or (N_CLK_7M and VID7 and N_SEGB and N_GR_N and N_PHI_0 and N_Q3 and N_RAS_N)
+                or (CLK_7M and N_VID7 and N_SEGB and N_GR_N and N_PHI_0 and N_Q3 and N_RAS_N);
 
-                AX_INT <= not ((not RAS_N_INT) and Q3_INT);
+            N_VID7M <= (GR_N and N_80COL_N)
+                or (SEGB and N_GR_N)
+                or (CREF and N_H0 and N_GR_N and N_PHI_0 and N_Q3 and N_AX)
+                or (N_VID7 and N_GR_N and N_PHI_0 and N_Q3 and N_AX)
+                or (N_GR_N and VID7M_INT and AX_INT)
+                or (N_GR_N and VID7M_INT and Q3_INT)
+                or (N_GR_N and VID7M_INT and PHI_0_INT)
+                or (CLK_7M and GR_N);
 
-            PHI_0_INT <= not ((RAS_N_INT and (not Q3_INT) and PHI_0_INT)
-                or (Q3_INT and (not PHI_0_INT))
-                or ((not RAS_N_INT) and (not PHI_0_INT)));
+            N_PHI_0 <= (N_PHI_0 and N_RAS_N)
+                or (N_PHI_0 and Q3_INT)
+                or (PHI_0_INT and N_Q3 and RAS_N_INT);
 
-            Q3_INT <= not (((not CLK_7M) and (not AX_INT) and (not PHI_0_INT))
-                or ((not RAS_N_INT) and (not Q3_INT))
-                or (CLK_7M and (not AX_INT) and PHI_0_INT));
+            N_Q3 <= (CLK_7M and PHI_0_INT and N_AX)
+                or (N_Q3 and N_RAS_N)
+                or (N_CLK_7M and N_PHI_0 and N_AX);
 
-            -- From "Understanding the Apple IIe" by Jim Sather:
-            --    "CAS_N is gated by CASEN_N from the MMU during PHASE 0 to enable or disable motherboard RAM.
-            --     CAS_N always falls during PHASE 1 and falls during PHASE 0 if CASEN_N is low."
-            CAS_N_INT <= not (((not RAS_N_INT) and (not AX_INT) and CAS_N_INT and (not PHI_0_INT))
-                or ((not RAS_N_INT) and (not AX_INT) and CAS_N_INT and PHI_0_INT and (not CASEN_N))
-                or ((not RAS_N_INT) and (not CAS_N_INT)));
+            N_CAS_N <= (N_CAS_N and N_RAS_N)
+                or (N_CASEN_N and N_AX and N_RAS_N)
+                or (N_PHI_0 and N_AX and N_RAS_N);
 
-            VID7M_INT <= not((CLK_7M and GR_N)
-                or ((not SEGB) and PHI_0_INT and (not GR_N) and VID7M_INT)
-                or (Q3_INT and (not SEGB) and (not GR_N) and VID7M_INT)
-                or (AX_INT and (not SEGB) and (not GR_N) and VID7M_INT)
-                or ((not AX_INT) and (not VID7) and (not Q3_INT) and (not SEGB) and (not PHI_0_INT) and (not GR_N))
-                or (CREF and (not AX_INT) and (not H0) and (not Q3_INT) and (not SEGB) and (not PHI_0_INT) and (not GR_N))
-                or (SEGB and (not GR_N))
-                or (GR_N and (not S_80COL_N)));
+            N_AX <= (Q3_INT and N_RAS_N);
 
-            LDPS_N <= not ((CLK_7M     and (not RAS_N_INT) and (not VID7) and (not Q3_INT) and (not SEGB) and (not PHI_0_INT) and (not GR_N))  -- HIRES Delayed
-                or (      (not CLK_7M) and (not RAS_N_INT) and VID7       and (not Q3_INT) and (not SEGB) and (not PHI_0_INT) and (not GR_N))  -- HIRES not delayed
-                or ((not AX_INT) and (not Q3_INT) and SEGB and (not PHI_0_INT) and (not GR_N))                               -- LORES mode
-                or ((not AX_INT) and (not Q3_INT) and (not PHI_0_INT) and GR_N)                                              -- TEXT mode
-                or ((not AX_INT) and (not Q3_INT) and PHI_0_INT and GR_N and (not S_80COL_N))                                -- Double RES causes LDPS_N during PHASE 0 & 1
-                or (CREF and (not AX_INT) and (not H0) and (not Q3_INT) and (not SEGB) and (not PHI_0_INT) and (not GR_N))); -- Right display edge cutoff
-
+            N_RAS_N <= (N_CLK_7M and N_CREF and H0 and PHI_0_INT)
+                or (CLK_7M and CREF and H0 and PHI_0_INT and AX_INT)
+                or (N_CLK_7M and PHI_0_INT and N_AX)
+                or (CLK_7M and N_PHI_0 and N_RAS_N)
+                or Q3_INT;
         end if;
     end process;
 
-    AX    <= AX_INT;
-    RAS_N <= RAS_N_INT;
-    PHI_0 <= PHI_0_INT;
-    PHI_1 <= not PHI_0_INT;
-    Q3    <= Q3_INT;
-    CAS_N <= CAS_N_INT;
-    VID7M <= VID7M_INT;
+    -- Invert outputs
+    AX     <= AX_INT;
+	LDPS_N <= not N_LDPS_N;
+    VID7M  <= VID7M_INT;
+    PHI_1  <= not PHI_0_INT;
+    PHI_0  <= PHI_0_INT;
+    Q3     <= Q3_INT;
+    CAS_N  <= not N_CAS_N;
+    RAS_N  <= RAS_N_INT;
 end RTL;
