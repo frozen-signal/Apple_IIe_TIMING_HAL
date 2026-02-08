@@ -1,18 +1,21 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
-use ieee.numeric_std.all;
 
 entity TIMING_INTERNALS_TB is
     -- empty
 end TIMING_INTERNALS_TB;
 
-architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
+architecture TESTBENCH of TIMING_INTERNALS_TB is
+    constant CLK_14M_CYCLES_PER_PHASE : integer := 7;
+    constant PHASE_RUNS_WARMUP        : integer := 4;
+    constant PHASE_RUNS_TO_CHECK      : integer := 130;
+    constant SAMPLE_DELAY             : time    := 1 ns;
 
     component CLK_MOCK is
         port (
             FINISHED : in std_logic;
 
-            CLK_14M : inout std_logic;
+            CLK_14M : out std_logic;
 
             CLK_7M : out std_logic;
             CREF   : out std_logic
@@ -23,7 +26,8 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
         port (
             PHI_0 : in std_logic;
 
-            H0 : out std_logic
+            H0            : out std_logic;
+            PHI_0_COUNTER : out integer
         );
     end component;
 
@@ -50,97 +54,49 @@ architecture TIMING_INTERNALS_TEST of TIMING_INTERNALS_TB is
         );
     end component;
 
-    procedure assertNextTimingHalOutputs(signal CLK : in std_logic;
-
-                                         signal PHI_0, PHI_1  : in std_logic;
-                                         constant PHI_0_PHASE : in std_logic;
-
-                                         signal RAS_N           : in std_logic;
-                                         constant expectedRAS_N : in std_logic;
-
-                                         signal Q3           : in std_logic;
-                                         constant expectedQ3 : in std_logic;
-
-                                         signal CAS_N           : in std_logic;
-                                         constant expectedCAS_N : in std_logic) is
-    begin
-        wait until rising_edge(CLK);
-        wait for 1 ns;
-        assert(PHI_0 = PHI_0_PHASE) report "PHI_0 is " & std_logic'image(PHI_0) & " but should be " & std_logic'image(PHI_0_PHASE) severity error;
-        assert(PHI_1 = (not PHI_0_PHASE)) report "PHI_1 is " & std_logic'image(PHI_1) & " but should be " & std_logic'image(not PHI_0_PHASE) severity error;
-        assert(RAS_N = expectedRAS_N) report "RAS_N is " & std_logic'image(RAS_N) & " but should be " & std_logic'image(expectedRAS_N) severity error;
-        assert(Q3 = expectedQ3) report "RAS_N is " & std_logic'image(Q3) & " but should be " & std_logic'image(expectedQ3) severity error;
-        assert(CAS_N = expectedCAS_N) report "CAS_N is " & std_logic'image(CAS_N) & " but should be " & std_logic'image(expectedCAS_N) severity error;
-    end procedure;
-
-    procedure assertNextVIDEOSignals(signal CLK              : in std_logic;
-                                     signal PHI_1            : in std_logic;
-                                     constant expectedPHI_1  : in std_logic;
-                                     signal RAS_N            : in std_logic;
-                                     constant expectedRAS_N  : in std_logic;
-                                     signal LDPS_N           : in std_logic;
-                                     constant expectedLDPS_N : in std_logic;
-                                     signal VID7M            : in std_logic;
-                                     constant expectedVID7M  : in std_logic) is
-    begin
-        wait until rising_edge(CLK);
-        wait for 1 ns;
-        assert(PHI_1 = expectedPHI_1) report "PHI_1 is " & std_logic'image(PHI_1) & " but should be " & std_logic'image(expectedPHI_1) severity error;
-        assert(RAS_N = expectedRAS_N) report "RAS_N is " & std_logic'image(RAS_N) & " but should be " & std_logic'image(expectedRAS_N) severity error;
-        assert(LDPS_N = expectedLDPS_N) report "LDPS_N is " & std_logic'image(LDPS_N) & " but should be " & std_logic'image(expectedLDPS_N) severity error;
-        assert(VID7M = expectedVID7M) report "VID7M is " & std_logic'image(VID7M) & " but should be " & std_logic'image(expectedVID7M) severity error;
-    end procedure;
-
-    procedure assertNextLDPS_N(signal CLK              : in std_logic;
-                               signal PHI_1            : in std_logic;
-                               constant expectedPHI_1  : in std_logic;
-                               signal RAS_N            : in std_logic;
-                               constant expectedRAS_N  : in std_logic;
-                               signal LDPS_N           : in std_logic;
-                               constant expectedLDPS_N : in std_logic) is
-    begin
-        wait until rising_edge(CLK);
-        wait for 1 ns;
-        assert(PHI_1 = expectedPHI_1) report "PHI_1 is " & std_logic'image(PHI_1) & " but should be " & std_logic'image(expectedPHI_1) severity error;
-        assert(RAS_N = expectedRAS_N) report "RAS_N is " & std_logic'image(RAS_N) & " but should be " & std_logic'image(expectedRAS_N) severity error;
-        assert(LDPS_N = expectedLDPS_N) report "LDPS_N is " & std_logic'image(LDPS_N) & " but should be " & std_logic'image(expectedLDPS_N) severity error;
-    end procedure;
-
-    signal CLK_14M : std_logic := '0';
+    signal CLK_14M : std_logic;
     signal CLK_7M  : std_logic;
     signal CREF    : std_logic;
 
-    signal H0        : std_logic := '0';
-    signal VID7      : std_logic := '0';
-    signal SEGB      : std_logic := '0';
-    signal GR_N      : std_logic := '1';
-    signal CASEN_N   : std_logic := '0';
-    signal S_80COL_N : std_logic := '1';
+    signal H0            : std_logic;
+    signal PHI_0_COUNTER : integer := 1;
+    signal IS_LONG_CYCLE : std_logic;
+    signal VID7          : std_logic := '0';
+    signal SEGB          : std_logic := '0';
+    signal GR_N          : std_logic := '1';
+    signal CASEN_N       : std_logic := '0';
+    signal S_80COL_N     : std_logic := '1';
 
     signal AX     : std_logic;
-    signal RAS_N  : std_logic := '0';
-    signal CAS_N  : std_logic;
-    signal Q3     : std_logic := '0';
-    signal PHI_0  : std_logic := '0';
-    signal PHI_1  : std_logic;
-    signal VID7M  : std_logic;
     signal LDPS_N : std_logic;
+    signal VID7M  : std_logic;
+    signal PHI_1  : std_logic;
+    signal PHI_0  : std_logic;
+    signal Q3     : std_logic;
+    signal CAS_N  : std_logic;
+    signal RAS_N  : std_logic;
 
     signal FINISHED : std_logic := '0';
+
+    signal DEBUG : integer := 0;
 begin
-    u_clk_mock : CLK_MOCK port map(
+    U_CLK_MOCK : CLK_MOCK
+    port map(
         FINISHED => FINISHED,
         CLK_14M  => CLK_14M,
         CLK_7M   => CLK_7M,
         CREF     => CREF
     );
 
-    u_iou_mock : IOU_MOCK port map (
-        PHI_0 => PHI_0,
-        H0    => H0
+    U_IOU_MOCK : IOU_MOCK
+    port map(
+        PHI_0         => PHI_0,
+        H0            => H0,
+        PHI_0_COUNTER => PHI_0_COUNTER
     );
 
-    dut : TIMING_INTERNALS port map (
+    U_DUT : TIMING_INTERNALS
+    port map(
         CLK_14M   => CLK_14M,
         CLK_7M    => CLK_7M,
         CREF      => CREF,
@@ -152,8 +108,8 @@ begin
         S_80COL_N => S_80COL_N,
 
         AX     => AX,
-        LDPS_N => LDPS_N,  -- TODO: untested
-        VID7M  => VID7M,  -- TODO: untested
+        LDPS_N => LDPS_N,
+        VID7M  => VID7M,
         PHI_1  => PHI_1,
         PHI_0  => PHI_0,
         Q3     => Q3,
@@ -162,265 +118,125 @@ begin
     );
 
     process
-        variable expectedRAS_N : std_logic;
     begin
-        -- "Burn" a full horizontal line.
-        for i in 1 to 65 loop
-            wait until rising_edge(PHI_0);
+        wait until (PHI_0_COUNTER = 64);
+
+        -- FIXME: Make sure H0 is elongated on the long cycle
+
+        -- PHI_0 / PHI_1 tests ----------------------------------------------------
+        -- PHI_0 is 14x CLK_14M cycles, 7 HIGHs and 7 LOWs
+        -- The "Long Cycle" is 16x CLK_14M cycles, 9 HIGHs and 7 LOWs
+        wait until rising_edge(PHI_0);
+        -- The long cycle should be 9 14M CLK HIGH, and 7 14M CLK LOW
+        for clk_14m_idx in 1 to 9 loop
+            assert (PHI_0 = '1') report "PHI_0 should be HIGH." severity error;
+            assert (PHI_1 = '0') report "PHI_1 should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
         end loop;
 
-        -- Test PHI, RAS_N, and Q3 during the long-cycle. The long cycle has 2 extra 14M cycles.
-        CASEN_N <= '0';
-        assertNextTimingHalOutputs(PHI_0,   PHI_0, PHI_1, '1', RAS_N, '1', Q3, '1', CAS_N, '1');
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '1', CAS_N, '1');
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '1', CAS_N, '1');
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '1', CAS_N, '0');
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');  -- The first extra 14M cycle
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '0', Q3, '0', CAS_N, '0');  -- The second extra 14M cycle
-        assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, '1', RAS_N, '1', Q3, '0', CAS_N, '0');
+        wait for 0 ns;
+        wait for 0 ns;
 
-        -- Test the remainder of the horizontal line (64x short cycles)
+        for clk_14m_idx in 1 to 7 loop
+            assert (PHI_0 = '0') report "PHI_0 should be LOW." severity error;
+            assert (PHI_1 = '1') report "PHI_1 should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+        end loop;
+
+        -- Make sure we have 64 normal cycles
         for cycle in 1 to 64 loop
-            -- Test CASEN_N: half cycles HIGH, and the other half LOW
-            if (cycle < 32) then
-                CASEN_N <= '0';
-            else
-                CASEN_N <= '1';
-            end if;
+            wait for 0 ns;
+            wait for 0 ns;
 
-            for PHI_0_PHASE in std_logic range '0' to '1' loop
-                expectedRAS_N := PHI_0_PHASE and CASEN_N;
+            for clk_14m_idx in 1 to 7 loop
+                assert (PHI_0 = '1') report "PHI_0 should be HIGH." severity error;
+                assert (PHI_1 = '0') report "PHI_1 should be LOW." severity error;
+                wait until rising_edge(CLK_14M);
+            end loop;
 
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '1', Q3, '1', CAS_N, '1');
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '1', CAS_N, '1');
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '1', CAS_N, '1');
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '1', CAS_N, expectedRAS_N);
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '0', CAS_N, expectedRAS_N);
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '0', Q3, '0', CAS_N, expectedRAS_N);
-                assertNextTimingHalOutputs(CLK_14M, PHI_0, PHI_1, PHI_0_PHASE, RAS_N, '1', Q3, '0', CAS_N, expectedRAS_N);
+            wait for 0 ns;
+            wait for 0 ns;
+
+            for clk_14m_idx in 1 to 7 loop
+                assert (PHI_0 = '0') report "PHI_0 should be LOW." severity error;
+                assert (PHI_1 = '1') report "PHI_1 should be HIGH." severity error;
+                wait until rising_edge(CLK_14M);
             end loop;
         end loop;
 
-        -- Test LDPS_N, TEXT40, long cycle ------------------------------------------------------------
-        -- In TEXT40, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-        -- In TEXT40, LDPS_N remains HIGH during PHASE 0
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');  -- LONG CYCLE
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        wait for 0 ns;
+        wait for 0 ns;
 
-        -- Retest LDPS_N, TEXT40, normal cycle
-        for cycle in 1 to 64 loop
-            -- In TEXT40, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-            -- In TEXT40, LDPS_N remains HIGH during PHASE 0
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        -- Make sure we have a long cycle after the 64 normal cycles
+        for clk_14m_idx in 1 to 9 loop
+            assert (PHI_0 = '1') report "PHI_0 should be HIGH." severity error;
+            assert (PHI_1 = '0') report "PHI_1 should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
         end loop;
 
-        -- Test LDPS_N, LORES, long cycle -------------------------------------------------------------
-        GR_N <= '0';
-        SEGB <= '1';
-        -- In LORES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-        -- In LORES, LDPS_N remains HIGH during PHASE 0
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        -- AX tests ----------------------------------------------------
+        -- AX Falls after PRAS_N falls and rises after Q3 falls
+        -- AX should be affected by the long cycle
+        wait until (PHI_0_COUNTER = 0);
 
-        -- Retest LDPS_N, LORES, normal cycle
-        for cycle in 1 to 64 loop
-            -- In LORES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-            -- In LORES, LDPS_N remains HIGH during PHASE 0
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        for clk_14m_idx in 1 to 2 loop
+            assert (AX = '1') report "AX should be HIGH." severity error;
+            wait until rising_edge(CLK_14M); -- Note: PRAS_N falls
+            wait for 0 ns;
+            wait for 0 ns;
         end loop;
 
-        -- Test LDPS_N, "HIRES, Not Delayed Cycle", long cycle -----------------------------------------------
-        GR_N <= '0';
-        SEGB <= '0';
-        VID7 <= '0';
-        -- In "HIRES, Not Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-        -- In "HIRES, Not Delayed Cycle", LDPS_N remains HIGH during PHASE 0
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');  -- LONG CYCLE
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');  -- LONG CYCLE
-        assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-
-        -- Retest LDPS_N, "HIRES, Not Delayed Cycle", normal cycle
-        for cycle in 1 to 64 loop
-            -- In "HIRES, Not Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextVIDEOSignals(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1', VID7M, '1');
-            -- In "HIRES, Not Delayed Cycle", LDPS_N remains HIGH during PHASE 0
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '0');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1', VID7M, '1');
-            assertNextVIDEOSignals(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1', VID7M, '0');
+        for clk_14m_idx in 1 to 3 loop
+            assert (AX = '0') report "AX should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
         end loop;
 
-        -- Note VID7M is not tested here for HIRES
-        -- Test LDPS_N, "HIRES, Delayed Cycle", long cycle -----------------------------------------------
-        GR_N <= '0';
-        SEGB <= '0';
-        VID7 <= '1';
-        -- In "HIRES, Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');  -- Delayed LDPS_N during the long cycle lasts 2x 14M cycle
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '0');
-
-        -- In "HIRES, Delayed Cycle", LDPS_N remains HIGH during PHASE 0
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-
-        -- Retest LDPS_N, "HIRES, Delayed Cycle", normal cycle
-        for cycle in 1 to 64 loop
-            -- In "HIRES, Delayed Cycle", LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '0');  -- LDPS_N is delayed 1x 14M cycle
-            -- In "HIRES, Delayed Cycle", LDPS_N remains HIGH during PHASE 0
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+        for clk_14m_idx in 1 to 6 loop
+            assert (AX = '1') report "AX should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
         end loop;
 
-        -- Test LDPS_N, Double RES, long cycle -----------------------------------------------
-        GR_N <= '1';
-        SEGB <= '0';
-        VID7 <= '0';
-        S_80COL_N <= '0';
+        -- We should have 1 cycle (the PHI_1 = '1' of the long cycle) + 64 cycles (all normal PHASE 0) + 64 cycles (all normal PHASE 1) = 129 cycles
+        -- that are the same (non long AX version)
+        for cycle in 1 to 129 loop
+            for clk_14m_idx in 1 to 3 loop
+                assert (AX = '0') report "AX should be LOW." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
 
-        -- In Double RES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-        assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-        assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-        -- In Double RES, LDPS_N also pulses LOW for 1x14M cycle on PHASE 0
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '0');
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');  -- LONG CYCLE
-        assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-
-        -- Retest LDPS_N, Double RES, normal cycle
-        for cycle in 1 to 64 loop
-            -- In Double RES, LDPS_N pulses LOW for 1x14M cycle on PHASE 1
-            assertNextLDPS_N(PHI_1,   PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '0', LDPS_N, '0');
-            assertNextLDPS_N(CLK_14M, PHI_1, '1', RAS_N, '1', LDPS_N, '1');
-            -- In Double RES, LDPS_N also pulses LOW for 1x14M cycle on PHASE 0
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '1');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '0', LDPS_N, '0');
-            assertNextLDPS_N(CLK_14M, PHI_1, '0', RAS_N, '1', LDPS_N, '1');
+            for clk_14m_idx in 1 to 4 loop
+                assert (AX = '1') report "AX should be HIGH." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
         end loop;
+
+        -- Finally, we should have a long cycle AX again
+        for clk_14m_idx in 1 to 3 loop
+            assert (AX = '0') report "AX should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        for clk_14m_idx in 1 to 6 loop
+            assert (AX = '1') report "AX should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        wait for 1 ms;
 
         FINISHED <= '1';
-        assert false report "Test done." severity note;
+        report "Tests finished." severity note;
         wait;
-
     end process;
-end TIMING_INTERNALS_TEST;
+end TESTBENCH;
