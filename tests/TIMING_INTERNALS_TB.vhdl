@@ -233,7 +233,185 @@ begin
             wait for 0 ns;
         end loop;
 
+        -- RAS_N tests ----------------------------------------------------
+        -- RAS rises on the last 14M cycle of the previous phase, and falls after the first 14M cycle of the current phase.
+        -- Its HIGH period is unaffected by the long cycle, but its LOW period is.
+        wait until (PHI_0_COUNTER = 0);
+
+        assert (RAS_N = '1') report "RAS_N should be HIGH." severity error;
+        wait until rising_edge(CLK_14M);
+        wait for 0 ns;
+        wait for 0 ns;
+
+        -- The long cycle is 9 14M cycles, so the LOW period should be 7
+        for clk_14m_idx in 1 to 7 loop
+            assert (RAS_N = '0') report "RAS_N should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- RAS_N should be back HIGH for the last 14M cycle
+        assert (RAS_N = '1') report "RAS_N should be HIGH." severity error;
+        wait until rising_edge(CLK_14M);
+        wait for 0 ns;
+        wait for 0 ns;
+
+        -- We should have 1 cycle (the PHI_1 = '1' of the long cycle) + 64 cycles (all normal PHASE 0) + 64 cycles (all normal PHASE 1) = 129 cycles
+        -- that are the same (non long AX version)
+        for cycle in 1 to 129 loop
+            assert (RAS_N = '1') report "RAS_N should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+
+            -- The normal cycle is 7 14M cycles, so the LOW period should be 5
+            for clk_14m_idx in 1 to 5 loop
+                assert (RAS_N = '0') report "RAS_N should be LOW." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+
+            -- RAS_N should be back HIGH for the last 14M cycle
+            assert (RAS_N = '1') report "RAS_N should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- Then, we should have a long cycle again
+        assert (RAS_N = '1') report "RAS_N should be HIGH." severity error;
+        wait until rising_edge(CLK_14M);
+        wait for 0 ns;
+        wait for 0 ns;
+
+        -- The long cycle is 9 14M cycles, so the LOW period should be 7
+        for clk_14m_idx in 1 to 7 loop
+            assert (RAS_N = '0') report "RAS_N should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- RAS_N should be back HIGH for the last 14M cycle
+        assert (RAS_N = '1') report "RAS_N should be HIGH." severity error;
+        wait until rising_edge(CLK_14M);
+        wait for 0 ns;
+        wait for 0 ns;
+
+        -- Q3 tests ----------------------------------------------------
+        -- Q3 rises at the start of PHASE 0 and 1, stays HIGH for 4 14M clock cycles, then falls and remain LOW for 3 14M clock cycles.
+        -- In the case of the long cycle, the LOW phase is elongated 2 14M clock cycles.
+        wait until (PHI_0_COUNTER = 0);
+
+        for clk_14m_idx in 1 to 4 loop
+            assert (Q3 = '1') report "Q3 should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        for clk_14m_idx in 1 to 5 loop
+            assert (Q3 = '0') report "Q3 should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- We should have 1 cycle (the PHI_1 = '1' of the long cycle) + 64 cycles (all normal PHASE 0) + 64 cycles (all normal PHASE 1) = 129 cycles
+        -- that are the same (non long AX version)
+        for cycle in 1 to 129 loop
+            for clk_14m_idx in 1 to 4 loop
+                assert (Q3 = '1') report "Q3 should be HIGH." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+
+            for clk_14m_idx in 1 to 3 loop
+                assert (Q3 = '0') report "Q3 should be LOW." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+        end loop;
+
+        -- Then, we should have a long cycle again
+        for clk_14m_idx in 1 to 4 loop
+            assert (Q3 = '1') report "Q3 should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        for clk_14m_idx in 1 to 5 loop
+            assert (Q3 = '0') report "Q3 should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- CAS_N tests ----------------------------------------------------
+        -- Case when CASEN_N is LOW
+        -- CAS_N rises at the start of PHASE 0 and 1, stays HIGH for 3 14M clock cycles, then falls and remain LOW for 4 14M clock cycles.
+        -- In the case of the long cycle, the LOW phase is elongated 2 14M clock cycles.
+        wait until (PHI_0_COUNTER = 0);
+
+        for clk_14m_idx in 1 to 3 loop
+            assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- The long cycle is 9 14M cycles, so the LOW period should be 6
+        for clk_14m_idx in 1 to 6 loop
+            assert (CAS_N = '0') report "CAS_N should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- We should have 1 cycle (the PHI_1 = '1' of the long cycle) + 64 cycles (all normal PHASE 0) + 64 cycles (all normal PHASE 1) = 129 cycles
+        -- that are the same (non long AX version)
+        for cycle in 1 to 129 loop
+            for clk_14m_idx in 1 to 3 loop
+                assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+
+            for clk_14m_idx in 1 to 4 loop
+                assert (CAS_N = '0') report "CAS_N should be LOW." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+        end loop;
+
+        -- Then, we should have a long cycle again
+        for clk_14m_idx in 1 to 3 loop
+            assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        -- The long cycle is 9 14M cycles, so the LOW period should be 6
+        for clk_14m_idx in 1 to 6 loop
+            assert (CAS_N = '0') report "CAS_N should be LOW." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
         wait for 1 ms;
+        -- To test:
+        -- CAS_N when CASEN_N = '1'
+        -- LDPS_N
+        -- VID7M
 
         FINISHED <= '1';
         report "Tests finished." severity note;
