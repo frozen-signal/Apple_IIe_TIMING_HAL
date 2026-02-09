@@ -407,9 +407,54 @@ begin
             wait for 0 ns;
         end loop;
 
+        -- Case when CASEN_N is HIGH
+        -- CAS_N should not fall during PHASE 0
+        CASEN_N <= '1';
+        wait until (PHI_0_COUNTER = 0);
+
+        for clk_14m_idx in 1 to 9 loop
+            assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+
+        for cycle in 1 to 64 loop
+            -- PHASE 1: CAS_N should behave like when CASEN_N = '0'
+            for clk_14m_idx in 1 to 3 loop
+                assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+
+            for clk_14m_idx in 1 to 4 loop
+                assert (CAS_N = '0') report "CAS_N should be LOW." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+
+            -- PHASE 0: Should not fall during PHASE 0
+            for clk_14m_idx in 1 to 7 loop
+                assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+                wait until rising_edge(CLK_14M);
+                wait for 0 ns;
+                wait for 0 ns;
+            end loop;
+        end loop;
+
+        -- Then, we should have a long cycle again
+        for clk_14m_idx in 1 to 9 loop
+            assert (CAS_N = '1') report "CAS_N should be HIGH." severity error;
+            wait until rising_edge(CLK_14M);
+            wait for 0 ns;
+            wait for 0 ns;
+        end loop;
+        CASEN_N <= '0';
+
         wait for 1 ms;
         -- To test:
-        -- CAS_N when CASEN_N = '1'
         -- LDPS_N
         -- VID7M
 
